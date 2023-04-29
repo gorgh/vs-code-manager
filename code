@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+unalias -a
+
+# Set name of the different files and directories used by the script
+script_dirname=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+install_symlink="${script_dirname}/install/latest"
+binary_filename="${install_symlink}/VSCode-linux-x64/bin/code"
+
+# Configure the proxy
+if [[ -f "${script_dirname}/proxy" ]]; then
+    . "${script_dirname}/proxy"
+fi
+
+# Start Visual Studio Code
+"${binary_filename}" --no-sandbox "$@"

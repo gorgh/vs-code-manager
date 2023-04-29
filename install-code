@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+unalias -a
+
+# Set name of the different files and directories used by the script
+script_dirname=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+install_symlink="${script_dirname}/install/latest"
+desktop_filename="${HOME}/.local/share/applications/code.desktop"
+icon_filename="${install_symlink}/VSCode-linux-x64/resources/app/resources/linux/code.png"
+
+# Configure the proxy
+if [[ -f "${script_dirname}/proxy" ]]; then
+    . "${script_dirname}/proxy"
+fi
+
+# Resolve the URL with all the redirections
+archive_url="https://code.visualstudio.com/sha/download?build=stable&os=linux-x64"
+archive_url="$(curl --output /dev/null --silent --head --location --write-out %{url_effective} "${archive_url}")"
+
+# Get the informations about the archive
+archive_name="$(basename "${archive_url}")"
+archive_basename="${archive_name%.*}"
+archive_basename="${archive_basename%.*}"
+
+# Install the last revision
+install_dirname="${script_dirname}/install/${archive_basename}"
+if [[ ! -d "${install_dirname}" ]]; then
+    archives_dirname="${script_dirname}/archives"
+    archive_filename="${archives_dirname}/${archive_name}"
+    echo "Download '${archive_url}' to '${archive_filename}'"
+    mkdir --parents "${archives_dirname}"
+    curl "${archive_url}" --progress-bar --output "${archive_filename}"
+
+    echo "Extract '${archive_filename}' to '${install_dirname}'"
+    mkdir --parents "${install_dirname}"
+    tar --extract --file "${archive_filename}" --directory "${install_dirname}"
+
+    echo "Update the install symlink '${install_symlink}' to '${archive_basename}'"
+    rm -f "${install_symlink}"
+    ln -s "${archive_basename}" "${install_symlink}"
+fi
+
+echo "Update the desktop file '${desktop_filename}' from '${script_dirname}/code.desktop'"
+cat "${script_dirname}/code.desktop" | sed "s#@BINARY_PATH@#${script_dirname}/code#g" | sed "s#@ICON_PATH@#${icon_filename}#g" > "${desktop_filename}"
